@@ -1,5 +1,6 @@
+import { GetFileDataController } from "./modules/files/getFileData/GetFileDataController";
 import { Router } from "express";
-import { UploadFileController } from "./modules/files/UploadFileController";
+import { UploadFileController } from "./modules/files/uploadFile/UploadFileController";
 import multer from "multer";
 
 const storage = multer.diskStorage({
@@ -17,6 +18,7 @@ const routes = Router();
 
 //FILE
 const uploadFileControllerController = new UploadFileController();
+const getFileDataController = new GetFileDataController();
 
 ////FILE
 routes.post(
@@ -24,5 +26,6 @@ routes.post(
   upload.array("files"),
   uploadFileControllerController.handle
 );
+routes.get("/getfiledata", getFileDataController.handle);
 
 export { routes };

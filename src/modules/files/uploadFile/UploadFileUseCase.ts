@@ -1,4 +1,4 @@
-import { ResponseI } from "modules/interfaces/responses";
+import { ResponseI } from "interfaces/responses";
 
 interface UploadFileUseCaseProps {
   files: any;
