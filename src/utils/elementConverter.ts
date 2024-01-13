@@ -1,5 +1,8 @@
 import { GroupedData } from "interfaces/elementsConverterInterfaces";
-import { getYearFromSerialDate } from "./dateFormate";
+import {
+  fillMissingYearsAndMonths,
+  getYearFromSerialDate,
+} from "./dateFormate";
 
 export function convertToSemanticName(parameterName: string): string {
   switch (parameterName) {
@@ -154,8 +157,8 @@ export function groupByMonthYearAndStatus(
     nextCycle: string;
     subscriberId: string;
   }[]
-): GroupedData {
-  const groups: GroupedData = {};
+): Record<string, { [key: string]: number }> {
+  const groups: Record<string, { [key: string]: number }> = {};
   const presentYears: number[] = [];
   const presentMonths: number[] = [];
 
@@ -164,18 +167,19 @@ export function groupByMonthYearAndStatus(
     const status = convertToEnglish(obj.status);
 
     if (!groups[yearMonth]) {
-      groups[yearMonth] = {};
-    }
-
-    if (!groups[yearMonth][status]) {
-      groups[yearMonth][status] = 0;
+      groups[yearMonth] = {
+        active: 0,
+        delayed: 0,
+        canceled: 0,
+        trialCanceled: 0,
+        upgrade: 0,
+      };
     }
 
     groups[yearMonth][status]++;
     const year = parseInt(yearMonth.split("-")[0], 10);
     const month = parseInt(yearMonth.split("-")[1], 10);
 
-    // Adiciona o ano e o mês aos arrays de anos e meses presentes
     if (presentYears.indexOf(year) === -1) {
       presentYears.push(year);
     }
@@ -184,34 +188,80 @@ export function groupByMonthYearAndStatus(
     }
   });
 
-  // Adiciona meses ausentes com base nos anos e meses presentes
   for (const year of presentYears) {
     for (let month = 1; month <= 12; month++) {
-      if (presentMonths.indexOf(month) === -1) {
-        const monthKey = `${year}-${month < 10 ? "0" : ""}${month}`;
+      const monthKey = `${year}-${month < 10 ? "0" : ""}${month}`;
 
-        if (!groups[monthKey]) {
-          groups[monthKey] = {
-            active: 0,
-            canceled: 0,
-            trialCanceled: 0,
-            upgrade: 0,
-          };
-        }
+      if (!groups[monthKey]) {
+        groups[monthKey] = {
+          active: 0,
+          delayed: 0,
+          canceled: 0,
+          trialCanceled: 0,
+          upgrade: 0,
+        };
       }
     }
   }
 
-  // Ordena as chaves (datas) em ordem crescente usando objetos Date
   const sortedKeys = Object.keys(groups).sort(
     (a, b) => new Date(a).getTime() - new Date(b).getTime()
   );
 
-  // Cria um novo objeto ordenado com base nas chaves
-  const sortedGroups: GroupedData = {};
+  const sortedGroups: Record<string, { [key: string]: number }> = {};
   sortedKeys.forEach((key) => {
     sortedGroups[key] = groups[key];
   });
 
   return sortedGroups;
+}
+
+interface BillingObject {
+  annual: string;
+  billingQuantity: number;
+  billingFrequencyInDays: number;
+  startDate: number;
+  status: string;
+  statusDate: number;
+  amount: number;
+  nextCycle: string;
+  subscriberId: string;
+}
+
+export function calculateMonthlyRevenue(
+  billingArray: BillingObject[]
+): Record<string, { [key: number]: number }> {
+  const yearlyRevenueMap: Record<string, { [key: number]: number }> = {};
+  for (const billingObject of billingArray) {
+    if (billingObject.status === "Ativa") {
+      const monthlyRevenue = Math.floor(
+        (billingObject.amount / billingObject.billingFrequencyInDays) * 30
+      );
+      const yearMonth = getYearFromSerialDate(billingObject.startDate);
+
+      const [year, month] = yearMonth.split("-");
+      const numericYear = parseInt(year, 10);
+
+      if (!yearlyRevenueMap[numericYear]) {
+        yearlyRevenueMap[numericYear] = {};
+      }
+
+      const monthKey = parseInt(month, 10);
+      if (!yearlyRevenueMap[numericYear][monthKey]) {
+        yearlyRevenueMap[numericYear][monthKey] = 0;
+      }
+
+      yearlyRevenueMap[numericYear][monthKey] += monthlyRevenue;
+    }
+  }
+
+  for (const year in yearlyRevenueMap) {
+    for (let month = 1; month <= 12; month++) {
+      if (!yearlyRevenueMap[year][month]) {
+        yearlyRevenueMap[year][month] = 0;
+      }
+    }
+  }
+
+  return yearlyRevenueMap;
 }

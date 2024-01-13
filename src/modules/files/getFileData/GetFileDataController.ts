@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as path from "path";
 import {
+  calculateMonthlyRevenue,
   convertToSemanticName,
   groupByMonthYearAndStatus,
 } from "../../../utils/elementConverter";
@@ -42,6 +43,7 @@ export class GetFileDataController {
 
       const statusCounts = countSubscribersByStatus(data);
       const statusByMonths = groupByMonthYearAndStatus(data);
+      const mrr = calculateMonthlyRevenue(data);
 
       return response.json({
         success: true,
@@ -51,6 +53,7 @@ export class GetFileDataController {
           statusCounts,
           data,
           statusByMonths,
+          mrr,
         },
       });
     } catch (err) {
