@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import * as path from "path";
-import { convertToSemanticName } from "../../../utils/elementConverter";
+import {
+  convertToSemanticName,
+  groupByMonthYearAndStatus,
+} from "../../../utils/elementConverter";
 import * as reader from "xlsx";
 import {
   countSubscribersByStatus,
@@ -23,7 +26,6 @@ export class GetFileDataController {
 
       for (let i = 0; i < sheetNames.length; i++) {
         const arr = reader.utils.sheet_to_json(file.Sheets[sheetNames[i]]);
-        console.log(file.Sheets[sheetNames[i]]);
 
         arr.forEach((element: any) => {
           const convertedElement: { [key: string]: any } = {};
@@ -39,7 +41,7 @@ export class GetFileDataController {
       }
 
       const statusCounts = countSubscribersByStatus(data);
-      // const frequency = stackedBarChartFrequency(data);
+      const statusByMonths = groupByMonthYearAndStatus(data);
 
       return response.json({
         success: true,
@@ -48,6 +50,7 @@ export class GetFileDataController {
         data: {
           statusCounts,
           data,
+          statusByMonths,
         },
       });
     } catch (err) {

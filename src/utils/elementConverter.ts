@@ -1,3 +1,6 @@
+import { GroupedData } from "interfaces/elementsConverterInterfaces";
+import { getYearFromSerialDate } from "./dateFormate";
+
 export function convertToSemanticName(parameterName: string): string {
   switch (parameterName) {
     case "periodicidade":
@@ -137,4 +140,78 @@ export function extractQuantity(item: any[]) {
   return filteredOutputArray.map((billingQuantity) => ({
     billingQuantity: Math.floor(billingQuantity),
   }));
+}
+
+export function groupByMonthYearAndStatus(
+  dates: {
+    annual: string;
+    billingQuantity: number;
+    billingFrequencyInDays: number;
+    startDate: number;
+    status: string;
+    statusDate: number;
+    amount: number;
+    nextCycle: string;
+    subscriberId: string;
+  }[]
+): GroupedData {
+  const groups: GroupedData = {};
+  const presentYears: number[] = [];
+  const presentMonths: number[] = [];
+
+  dates.forEach((obj) => {
+    const yearMonth = getYearFromSerialDate(obj.startDate);
+    const status = convertToEnglish(obj.status);
+
+    if (!groups[yearMonth]) {
+      groups[yearMonth] = {};
+    }
+
+    if (!groups[yearMonth][status]) {
+      groups[yearMonth][status] = 0;
+    }
+
+    groups[yearMonth][status]++;
+    const year = parseInt(yearMonth.split("-")[0], 10);
+    const month = parseInt(yearMonth.split("-")[1], 10);
+
+    // Adiciona o ano e o mês aos arrays de anos e meses presentes
+    if (presentYears.indexOf(year) === -1) {
+      presentYears.push(year);
+    }
+    if (presentMonths.indexOf(month) === -1) {
+      presentMonths.push(month);
+    }
+  });
+
+  // Adiciona meses ausentes com base nos anos e meses presentes
+  for (const year of presentYears) {
+    for (let month = 1; month <= 12; month++) {
+      if (presentMonths.indexOf(month) === -1) {
+        const monthKey = `${year}-${month < 10 ? "0" : ""}${month}`;
+
+        if (!groups[monthKey]) {
+          groups[monthKey] = {
+            active: 0,
+            canceled: 0,
+            trialCanceled: 0,
+            upgrade: 0,
+          };
+        }
+      }
+    }
+  }
+
+  // Ordena as chaves (datas) em ordem crescente usando objetos Date
+  const sortedKeys = Object.keys(groups).sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+  );
+
+  // Cria um novo objeto ordenado com base nas chaves
+  const sortedGroups: GroupedData = {};
+  sortedKeys.forEach((key) => {
+    sortedGroups[key] = groups[key];
+  });
+
+  return sortedGroups;
 }
